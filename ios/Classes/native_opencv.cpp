@@ -13,4 +13,20 @@ extern "C" {
     __attribute__((visibility("default"))) __attribute__((used)) const char* version() {
         return CV_VERSION;
     }
+
+    __attribute__((visibility("default"))) __attribute__((used))
+    const char* processImage(const char* imagePath) {
+        Mat image = imread(imagePath, IMREAD_COLOR);
+        if(image.empty()) {
+            return "Failed to load image";
+        }
+
+        Mat grayImage;
+        cvtColor(image, grayImage, COLOR_BGR2GRAY);
+
+        string result = "Image processed successfully. Size: ";
+        result += to_string(grayImage.rows) + "x" + to_string(grayImage.cols) + ", Type: " + to_string(grayImage.type());
+
+        return result.c_str();
+    }
 }

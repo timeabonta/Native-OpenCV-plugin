@@ -10,12 +10,15 @@ final DynamicLibrary nativeLib =
 
 // C függvények aláírásai
 typedef _c_version = Pointer<Utf8> Function();
+typedef _c_processImage = Pointer<Utf8> Function(Pointer<Utf8> imagePath);
 
 // Dart függvények aláírásai
 typedef _dart_version = Pointer<Utf8> Function();
+typedef _dart_processImage = Pointer<Utf8> Function(Pointer<Utf8> imagePath);
 
 // Dart függvények létrehozása, amelyek meghívják a C függvényeket
 final _version = nativeLib.lookupFunction<_c_version, _dart_version>('version');
+final _processImage = nativeLib.lookupFunction<_c_processImage, _dart_processImage>('processImage');
 
 class NativeOpencv {
 
@@ -30,5 +33,14 @@ class NativeOpencv {
   String cvVersion() {
     return _version().toDartString();
   }
+
+  static Future<String> processImage(String imagePath) async {
+    final imagePathPtr = imagePath.toNativeUtf8();
+    final resultPtr = _processImage(imagePathPtr);
+    final result = resultPtr.toDartString();
+    calloc.free(imagePathPtr);
+    return result;
+  }
+
 }
 

@@ -9,13 +9,13 @@ add_library( # Sets the name of the library.
         native_opencv
         SHARED
         # Provides a relative path to your source file(s).
-        #../ios/Classes/ColorDetector/ColorDetector.cpp
+        ../ios/Classes/ColorDetector/ColorDetector.cpp
         ../ios/Classes/native_opencv.cpp
         )
 
 target_include_directories(
         native_opencv PRIVATE
-        #../ios/Classes/ColorDetector
+        ../ios/Classes/ColorDetector
 )
 
 find_library(log-lib log)
