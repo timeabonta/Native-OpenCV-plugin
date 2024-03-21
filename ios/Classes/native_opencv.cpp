@@ -2,6 +2,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <iostream>
+#include <algorithm>
 
 using namespace std;
 using namespace cv;
@@ -39,10 +40,11 @@ extern "C" {
             return lastError.c_str();
         }
 
-        // szin szerinti keretezes
+        //zaj csokkentes
+        GaussianBlur(src, src, Size(5, 5), 0);
+
         Mat hsvImage;
         cvtColor(src, hsvImage, COLOR_BGR2HSV);
-
         Mat hsv[3];
         split(hsvImage, hsv);
         int histSize = 256;
@@ -51,42 +53,77 @@ extern "C" {
         Mat hist;
         calcHist(&hsv[0], 1, 0, Mat(), hist, 1, &histSize, &histRange, true, false);
 
-        // legyakoribb szinarnyalat indexe
-        double maxVal = 0;
-        Point maxValPoint;
-        minMaxLoc(hist, 0, &maxVal, 0, &maxValPoint);
-        int dominantHueIndex = maxValPoint.y;
+        // szinarnyalatok es ezek gyakorisaganak kinyerese
+        vector<pair<int, float>> hueFrequencies;
+        for (int i = 0; i < histSize; ++i) {
+            hueFrequencies.push_back({i, hist.at<float>(i)});
+        }
 
-        int hueTolerance = 10; // tolerancia a dominans szinarnyalat korul
-        Scalar lowerBound(dominantHueIndex - hueTolerance, 50, 50);
-        Scalar upperBound(dominantHueIndex + hueTolerance, 255, 255);
-        Mat mask;
-        inRange(hsvImage, lowerBound, upperBound, mask);
-        vector<vector<Point>> contours;
-        findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+        sort(hueFrequencies.begin(), hueFrequencies.end(), [](const pair<int, float>& a, const pair<int, float>& b) {
+            return a.second > b.second;
+        });
 
-        //legnagyobb kontur -> legnagyobb targy
-        double maxArea = 0;
-        vector<Point> largestContour;
-        for (const vector<Point>& contour : contours) {
-            double area = contourArea(contour);
-            if (area > maxArea) {
-                maxArea = area;
-                largestContour = contour;
+        // ket kulonbozo szinu targyat akarunk detektalni -> tul kozeli szinuek kiszurese
+        vector<int> dominantHues;
+        for (auto& hueFrequency : hueFrequencies) {
+            bool tooClose = false;
+            for (int selectedHue : dominantHues) {
+                if (abs(hueFrequency.first - selectedHue) < 25) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (!tooClose && dominantHues.size() < 2) {
+                dominantHues.push_back(hueFrequency.first);
             }
         }
 
-        if (!largestContour.empty()) {
-            Rect boundingBox = boundingRect(largestContour);
-            rectangle(src, boundingBox, Scalar(0, 255, 0), 2);
+        vector<Scalar> bounds;
+        for (int hue : dominantHues) {
+            int hueTolerance = 10;
+            bounds.push_back(Scalar(hue - hueTolerance, 30, 30));
+            bounds.push_back(Scalar(hue + hueTolerance, 255, 255));
         }
 
-        string resultStream = "/data/data/com.example.himo/files/detected.png";
-        if (!imwrite(resultStream, src)) {
-            lastError = "Failed to save output image";
-            return lastError.c_str();
+        //minden dominans szinu legnagyobb targyat kulon file-ba mentjuk
+        vector<string> resultStreams;
+
+        for (int i = 0; i < bounds.size(); i += 2) {
+            Mat mask;
+            Mat temp = src.clone();
+            inRange(hsvImage, bounds[i], bounds[i + 1], mask);
+            vector<vector<Point>> contours;
+            findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+
+            double maxArea = 300;   //a tul kicsi teruleteket elvessuk
+            vector<Point> largestContour;
+            for (const vector<Point>& contour : contours) {
+                double area = contourArea(contour);
+                if (area > maxArea) {
+                    maxArea = area;
+                    largestContour = contour;
+                }
+            }
+
+            if (!largestContour.empty()) {
+                Rect boundingBox = boundingRect(largestContour);
+                rectangle(temp, boundingBox, Scalar(255, 0, 0), 2);
+                Mat objectImage = temp.clone();
+                rectangle(objectImage, boundingBox, Scalar(0, 255, 0), 2);
+                string resultStream = "/data/data/com.example.himo/files/detected_" + to_string(i) + ".png";
+                if (!imwrite(resultStream, objectImage)) {
+                    lastError = "Failed to save output image";
+                    return lastError.c_str();
+                }
+                resultStreams.push_back(resultStream);
+            }
         }
 
-        return strdup(resultStream.c_str());
+        string result = "";
+        for (const auto& stream : resultStreams) {
+            result += stream + ";";
+        }
+
+        return strdup(result.c_str());
     }
 }

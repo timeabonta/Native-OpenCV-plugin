@@ -46,24 +46,22 @@ class NativeOpencv {
     return _version().toDartString();
   }
 
-  static Future<String> processImage(String imagePath) async {
+  static Future<List<File>?> detectAndFrameObjects(String imagePath) async {
     final imagePathPtr = imagePath.toNativeUtf8();
-    final resultPtr = _processImage(imagePathPtr);
+    final resultPtr = _detectAndFrameObject(imagePathPtr);
+    calloc.free(imagePathPtr);
     final result = resultPtr.toDartString();
-    calloc.free(imagePathPtr);
-    return result;
-  }
-
-  static Future<File?> detectAndFrameObjects(String imagePath) async {
-    final imagePathPtr = imagePath.toNativeUtf8();
-    final resultPathPtr = _detectAndFrameObject(imagePathPtr);
-    calloc.free(imagePathPtr);
-    final resultPath = resultPathPtr.toDartString();
-    if (resultPath.startsWith('Failed')) {
-      print(resultPath);
+    if (result.startsWith('Failed')) {
+      print(result);
       return null;
     }
-    return File(resultPath);
+    final fileNames = result.split(';');
+    List<File> files = [];
+    for (String fileName in fileNames) {
+      if (fileName.isNotEmpty) {
+        files.add(File(fileName));
+      }
+    }
+    return files;
   }
 }
-
