@@ -23,6 +23,12 @@ final _version = nativeLib.lookupFunction<_c_version, _dart_version>('version');
 final _processImage = nativeLib.lookupFunction<_c_processImage, _dart_processImage>('processImage');
 final _detectAndFrameObject = nativeLib.lookupFunction<_c_detectAndFrameObject, _dart_detectAndFrameObject>('detectAndFrameObjects');
 
+class DetectedObject {
+  File imageFile;
+  int dominantHue;
+
+  DetectedObject(this.imageFile, this.dominantHue);
+}
 
 class NativeOpencv {
 
@@ -46,7 +52,7 @@ class NativeOpencv {
     return _version().toDartString();
   }
 
-  static Future<List<File>?> detectAndFrameObjects(String imagePath) async {
+  static Future<List<DetectedObject>?> detectAndFrameObjects(String imagePath) async {
     final imagePathPtr = imagePath.toNativeUtf8();
     final resultPtr = _detectAndFrameObject(imagePathPtr);
     calloc.free(imagePathPtr);
@@ -55,13 +61,16 @@ class NativeOpencv {
       print(result);
       return null;
     }
-    final fileNames = result.split(';');
-    List<File> files = [];
-    for (String fileName in fileNames) {
-      if (fileName.isNotEmpty) {
-        files.add(File(fileName));
+    final entries = result.split(';');
+    List<DetectedObject> objects = [];
+    for (String entry in entries) {
+      if (entry.isNotEmpty) {
+        final parts = entry.split(',');
+        if (parts.length == 2) {
+          objects.add(DetectedObject(File(parts[0]), int.parse(parts[1])));
+        }
       }
     }
-    return files;
+    return objects;
   }
 }

@@ -41,7 +41,7 @@ extern "C" {
         }
 
         //zaj csokkentes
-        GaussianBlur(src, src, Size(5, 5), 0);
+        //GaussianBlur(src, src, Size(5, 5), 0);
 
         Mat hsvImage;
         cvtColor(src, hsvImage, COLOR_BGR2HSV);
@@ -80,8 +80,8 @@ extern "C" {
 
         vector<Scalar> bounds;
         for (int hue : dominantHues) {
-            int hueTolerance = 10;
-            bounds.push_back(Scalar(hue - hueTolerance, 30, 30));
+            int hueTolerance = 7;    // ezeket a parametereket meg kell modositani
+            bounds.push_back(Scalar(hue - hueTolerance, 50, 50));
             bounds.push_back(Scalar(hue + hueTolerance, 255, 255));
         }
 
@@ -93,9 +93,9 @@ extern "C" {
             Mat temp = src.clone();
             inRange(hsvImage, bounds[i], bounds[i + 1], mask);
             vector<vector<Point>> contours;
-            findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+            findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
-            double maxArea = 300;   //a tul kicsi teruleteket elvessuk
+            double maxArea = 200;   //a tul kicsi teruleteket elvessuk
             vector<Point> largestContour;
             for (const vector<Point>& contour : contours) {
                 double area = contourArea(contour);
@@ -120,8 +120,10 @@ extern "C" {
         }
 
         string result = "";
-        for (const auto& stream : resultStreams) {
-            result += stream + ";";
+        for (int i = 0; i < resultStreams.size(); ++i) {
+            //a kep eleresi utja es az adott dominans szin osszefuzese
+            int hue = dominantHues[i];
+            result += resultStreams[i] + "," + to_string(hue) + ";";
         }
 
         return strdup(result.c_str());
