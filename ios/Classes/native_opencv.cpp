@@ -3,9 +3,12 @@
 #include <opencv2/imgcodecs.hpp>
 #include <iostream>
 #include <algorithm>
+#include "ColorDetector.h"
 
 using namespace std;
 using namespace cv;
+
+static ColorDetector* detector = nullptr;
 
 // 'C' típusú interfész definiálása
 extern "C" {
@@ -30,6 +33,56 @@ extern "C" {
 
         return result.c_str();
     }
+
+    __attribute__((visibility("default"))) __attribute__((used))
+    void initDetector(int hue, int hueTolerance) {
+        if (detector != nullptr) {
+            delete detector;
+            detector = nullptr;
+        }
+
+        detector = new ColorDetector(hue, hueTolerance);
+    }
+
+    __attribute__((visibility("default"))) __attribute__((used))
+    void destroyDetector() {
+        if (detector != nullptr) {
+            delete detector;
+            detector = nullptr;
+        }
+    }
+
+    __attribute__((visibility("default"))) __attribute__((used))
+    const float* detect(int width, int height, int rotation, uint8_t* bytes, bool isYUV, int32_t* outCount) {
+        Mat frame;
+        if (isYUV) {
+            Mat myyuv(height + height / 2, width, CV_8UC1, bytes);
+            cvtColor(myyuv, frame, COLOR_YUV2BGR_NV21);
+        } else {
+            frame = Mat(height, width, CV_8UC4, bytes);
+        }
+
+        Rect largestBoundingBox = boundingRect(detector->findLargestObject);
+
+        vector<float> output;
+        if (maxArea > 0) {
+            output.push_back(largestBoundingBox.x);
+            output.push_back(largestBoundingBox.y);
+            output.push_back(largestBoundingBox.x + largestBoundingBox.width);
+            output.push_back(largestBoundingBox.y + largestBoundingBox.height);
+        }
+
+        *outCount = output.size();
+        if (*outCount == 0) {
+            return nullptr;
+        }
+
+        float* jres = (float*)malloc(sizeof(float) * output.size());
+        memcpy(jres, output.data(), sizeof(float) * output.size());
+
+        return jres;
+    }
+
 
     __attribute__((visibility("default"))) __attribute__((used))
     const char* detectAndFrameObjects(const char* imagePath) {
