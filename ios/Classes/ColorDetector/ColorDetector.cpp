@@ -1,25 +1,41 @@
 #include "ColorDetector.h"
 
-ColorDetector::ColorDetector(cv::Scalar targetColor) : targetColor(targetColor) {}
+ColorDetector::ColorDetector(int hue, int hueTolerance) : m_hue(hue), m_hueTolerance(hueTolerance) {}
 
-std::vector<cv::Rect> ColorDetector::detectColor(const cv::Mat& image) {
-    std::vector<cv::Rect> colorRegions;
+vector<Point> ColorDetector::findLargestObject(const Mat& frame) {
 
-    cv::Mat hsvImage;
-    cv::cvtColor(image, hsvImage, cv::COLOR_BGR2HSV);
+    Mat hsv, mask;
+    // Átalakítas HSV színtérbe
+    cvtColor(frame, hsv, COLOR_BGR2HSV);
 
-    cv::Mat mask;
-    cv::Scalar lowerBound(targetColor[0] - 10, 100, 100);
-    cv::Scalar upperBound(targetColor[0] + 10, 255, 255);
-    cv::inRange(hsvImage, lowerBound, upperBound, mask);
+    Scalar lowerBlue = Scalar(90, 50, 50);
+    Scalar upperBlue = Scalar(150, 255, 255);
 
-    std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    inRange(hsvImage, lowerBlue, upperBlue, mask);
+    // Kontúrok keresése
+    vector<vector<Point>> contours;
+    findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
+    return findLargestContour(contours);
+}
+
+vector<Point> ColorDetector::findLargestContour(const vector<vector<Point>>& contours) {
+    double maxArea = 100;
+    vector<Point> largestContour;
     for (const auto& contour : contours) {
-        cv::Rect boundingRect = cv::boundingRect(contour);
-        colorRegions.push_back(boundingRect);
+        double area = contourArea(contour);
+        if (area > maxArea) {
+            maxArea = area;
+            largestContour = contour;
+        }
     }
+    return largestContour;
+}
 
-    return colorRegions;
+Scalar ColorDetector::lowerBound() {
+    return Scalar(m_hue - m_hueTolerance, 50, 50);
+}
+
+Scalar ColorDetector::upperBound() {
+    return Scalar(m_hue + m_hueTolerance, 255, 255);
 }

@@ -5,13 +5,20 @@
 #include <opencv2/imgproc.hpp>
 #include <vector>
 
+using namespace cv;
+using namespace std;
+
 class ColorDetector {
 public:
-    ColorDetector(cv::Scalar targetColor);
-    std::vector<cv::Rect> detectColor(const cv::Mat& image);
+    ColorDetector(int hue, int hueTolerance = 10);
+    vector<Point> findLargestObject(const Mat& frame);
 
 private:
-    cv::Scalar targetColor;
+    int m_hue;
+    int m_hueTolerance;
+    vector<Point> findLargestContour(const vector<vector<Point>>& contours);
+    Scalar lowerBound();
+    Scalar upperBound();
 };
 
 #endif // COLOR_DETECTOR_H
