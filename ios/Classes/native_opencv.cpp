@@ -62,15 +62,14 @@ extern "C" {
             frame = Mat(height, width, CV_8UC4, bytes);
         }
 
-        Rect largestBoundingBox = boundingRect(detector->findLargestObject);
+        Rect largestBoundingBox = boundingRect(detector->findLargestObject(frame, rotation));
 
         vector<float> output;
-        if (maxArea > 0) {
-            output.push_back(largestBoundingBox.x);
-            output.push_back(largestBoundingBox.y);
-            output.push_back(largestBoundingBox.x + largestBoundingBox.width);
-            output.push_back(largestBoundingBox.y + largestBoundingBox.height);
-        }
+        output.push_back(largestBoundingBox.x);
+        output.push_back(largestBoundingBox.y);
+        output.push_back(largestBoundingBox.x + largestBoundingBox.width);
+        output.push_back(largestBoundingBox.y + largestBoundingBox.height);
+
 
         *outCount = output.size();
         if (*outCount == 0) {

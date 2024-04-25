@@ -11,7 +11,7 @@ using namespace std;
 class ColorDetector {
 public:
     ColorDetector(int hue, int hueTolerance = 10);
-    vector<Point> findLargestObject(const Mat& frame);
+    vector<Point> findLargestObject(const Mat& frame, int hue);
 
 private:
     int m_hue;
